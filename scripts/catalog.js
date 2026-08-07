@@ -8,4 +8,14 @@ globalThis.READING_CATALOG = [{
   pages: 8,
   cover: 'books/rise-of-the-earth-dragon/assets/cover.png',
   href: 'reader.html?book=rise-of-the-earth-dragon',
+}, {
+  id: 'saving-the-sun-dragon',
+  title: 'Saving the Sun Dragon',
+  titleZh: '拯救太阳龙',
+  description: '太阳龙 Kepri 突然病倒，Dragon Masters 踏上寻找真相与救援伙伴的冒险。',
+  grade: '小学高年级',
+  level: '初级',
+  pages: 14,
+  cover: 'books/saving-the-sun-dragon/assets/cover.png',
+  href: 'reader.html?book=saving-the-sun-dragon',
 }];
