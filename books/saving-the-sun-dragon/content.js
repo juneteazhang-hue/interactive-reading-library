@@ -361,7 +361,7 @@
   // pair keeps the two question bubbles on quiet background regions instead
   // of covering the chapter's faces, dragons, weapons, or story action.
   const bubblePositions = [
-    [{ left: 34, top: 18 }, { left: 82, top: 70 }],
+    [{ left: 34, top: 38 }, { left: 82, top: 70 }],
     [{ left: 46, top: 16 }, { left: 78, top: 16 }],
     [{ left: 27, top: 24 }, { left: 64, top: 82 }],
     [{ left: 80, top: 17 }, { left: 82, top: 78 }],
