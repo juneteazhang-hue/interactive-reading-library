@@ -6,10 +6,13 @@
   const entry = (globalThis.READING_CATALOG || []).find(item => item.id === bookId);
   const bookBase = `books/${bookId}/`;
   let book;
+  let readingCount = 0;
   let state;
   let activeQuestion = 0;
   let activeSentence = 0;
   let celebrationTimer;
+
+  const DEFAULT_BUBBLE_POSITIONS = [{left:67,top:46},{left:28,top:70}];
 
   const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -21,7 +24,8 @@
       await loadScript(`${bookBase}pages.js`);
       await loadScript(`${bookBase}content.js`);
       book = globalThis.BOOK_DATA;
-      if (!book || book.id !== bookId || book.pages.length !== 8 || book.retelling.length !== 8) throw new Error('Invalid book data');
+      if (!book || book.id !== bookId || !Array.isArray(book.pages) || book.pages.length < 1 || book.retelling.length !== 8) throw new Error('Invalid book data');
+      readingCount = book.pages.length;
       state = loadProgress();
       $('#loadingState').hidden = true;
       $('#readerApp').hidden = false;
@@ -35,10 +39,16 @@
   }
 
   function showError() { $('#loadingState').hidden = true; $('#errorState').hidden = false; }
-  function loadProgress() { try { const data = JSON.parse(localStorage.getItem(`reading-progress:${bookId}`)); return data && Number.isInteger(data.page) && data.page >= 0 && data.page <= 8 ? { page:data.page, done:Array.isArray(data.done)?data.done:[] } : {page:0,done:[]}; } catch { return {page:0,done:[]}; } }
+  function loadProgress() { try { const data = JSON.parse(localStorage.getItem(`reading-progress:${bookId}`)); const validPage = Number.isInteger(data?.page) && data.page >= 0 && data.page <= readingCount; return validPage ? { page:data.page, done:Array.isArray(data.done)?data.done:[] } : {page:0,done:[]}; } catch { return {page:0,done:[]}; } }
   function save() { localStorage.setItem(`reading-progress:${bookId}`, JSON.stringify(state)); }
   const questionId = (page, question) => `${page}-${question}`;
   const pageComplete = page => book.pages[page]?.questions.every((_, index) => state.done.includes(questionId(page,index)));
+  const bubblePosition = (page,index) => {
+    const fallback=DEFAULT_BUBBLE_POSITIONS[index]||DEFAULT_BUBBLE_POSITIONS[0];
+    const candidate=page.bubblePositions?.[index];
+    const safe=value=>Number.isFinite(value)&&value>=10&&value<=90;
+    return {left:safe(candidate?.left)?candidate.left:fallback.left,top:safe(candidate?.top)?candidate.top:fallback.top};
+  };
 
   function emphasize(text, vocabulary) {
     let html = escapeHtml(text);
@@ -58,7 +68,7 @@
   }
 
   function render() {
-    const isRetelling=state.page===8;
+    const isRetelling=state.page===readingCount;
     $('#readingWorkspace').hidden=isRetelling;
     $('#retellingPage').hidden=!isRetelling;
     if(isRetelling) renderRetelling(); else renderReading();
@@ -77,8 +87,8 @@
     $('#vocabCards').innerHTML=page.vocabulary.map(([word,ipa,pos,cn,en])=>`<article class="vocab-card"><button type="button" data-word="${escapeHtml(word)}" aria-label="朗读 ${escapeHtml(word)}">🔊</button><div class="vocab-word">${escapeHtml(word)}</div><div class="vocab-phonetic">${escapeHtml(ipa)} · ${escapeHtml(pos)}</div><div class="vocab-cn">${escapeHtml(cn)}</div><div class="vocab-en">${escapeHtml(en)}</div></article>`).join('');
     $$('[data-word]').forEach(button=>button.addEventListener('click',()=>speak(button.dataset.word,.76)));
     $('#sceneImage').src=`${bookBase}${page.image}`; $('#sceneImage').alt=`${page.title} 场景插图`;
-    $('#sceneKicker').textContent=`STORY SCENE · ${state.page+1}/8`; $('#sceneTitle').textContent=page.title;
-    $('#bubbleLayer').innerHTML=page.questions.map((_,index)=>`<button class="quiz-bubble ${state.done.includes(questionId(state.page,index))?'done':''}" style="left:${index?28:67}%;top:${index?70:46}%" data-question="${index}" type="button"><span>${state.done.includes(questionId(state.page,index))?'✓':index+1}</span></button>`).join('');
+    $('#sceneKicker').textContent=`STORY SCENE · ${state.page+1}/${readingCount}`; $('#sceneTitle').textContent=page.title;
+    $('#bubbleLayer').innerHTML=page.questions.map((question,index)=>{const done=state.done.includes(questionId(state.page,index));const label=question.bubble||`Question ${index+1}`;const position=bubblePosition(page,index);return `<button class="quiz-bubble ${done?'done':''}" style="--bubble-left:${position.left}%;--bubble-top:${position.top}%" data-question="${index}" type="button" aria-label="打开题目：${escapeHtml(label)}"><span class="quiz-bubble-status">${done?'✓':index+1}</span><span class="quiz-bubble-label">${escapeHtml(label)}</span></button>`}).join('');
     $$('[data-question]').forEach(button=>button.addEventListener('click',()=>openQuestion(Number(button.dataset.question))));
     $('#paragraphAudio').src=`${bookBase}${page.audio}`;
     $('#taskArea').innerHTML=pageComplete(state.page)?'<p class="feedback">✓ 本页两道题已完成。</p>':'<p>可自由翻页；答题进度会自动保存。</p>';
@@ -86,14 +96,15 @@
   }
 
   function renderProgress() {
-    $('#progressText').textContent=`${state.page+1} / 9`;
-    $('#progressLabel').textContent=state.page===8?'STORY RETELLING':book.pages[state.page].title.toUpperCase();
-    $('#prevBtn').disabled=state.page===0; $('#nextBtn').disabled=state.page===8;
-    $('#progressDots').innerHTML=Array.from({length:9},(_,index)=>`<li><button class="progress-page ${index===state.page?'active':''} ${index<8&&pageComplete(index)?'complete':''}" data-page="${index}" type="button" ${index===state.page?'aria-current="page"':''} aria-label="前往第 ${index+1} 页">${index===8?'复述':index+1}</button></li>`).join('');
+    const totalViews = readingCount + 1;
+    $('#progressText').textContent=`${state.page+1} / ${totalViews}`;
+    $('#progressLabel').textContent=state.page===readingCount?'STORY RETELLING':book.pages[state.page].title.toUpperCase();
+    $('#prevBtn').disabled=state.page===0; $('#nextBtn').disabled=state.page===readingCount;
+    $('#progressDots').innerHTML=Array.from({length:totalViews},(_,index)=>`<li><button class="progress-page ${index===state.page?'active':''} ${index<readingCount&&pageComplete(index)?'complete':''}" data-page="${index}" type="button" ${index===state.page?'aria-current="page"':''} aria-label="${index===readingCount?'前往复述':`前往第 ${index+1} 页`}">${index===readingCount?'复述':index+1}</button></li>`).join('');
     $$('[data-page]').forEach(button=>button.addEventListener('click',()=>goToPage(Number(button.dataset.page))));
   }
 
-  function goToPage(page) { if(!Number.isInteger(page)||page<0||page>8||page===state.page)return; stopAudio(); closeLayers(); state.page=page; save(); render(); }
+  function goToPage(page) { if(!Number.isInteger(page)||page<0||page>readingCount||page===state.page)return; stopAudio(); closeLayers(); state.page=page; save(); render(); }
   function stopAudio(){const audio=$('#paragraphAudio');audio.pause();audio.currentTime=0;if('speechSynthesis'in window)speechSynthesis.cancel();}
   function speak(text,rate=.86){if(!('speechSynthesis'in window))return; speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=rate;speechSynthesis.speak(u);}
 
@@ -110,6 +121,6 @@
 
   function renderRetelling(){const grid=$('#retellGrid');grid.innerHTML=book.retelling.map((item,index)=>`<button class="retell-card" type="button" aria-pressed="false" aria-label="翻转第 ${index+1} 幅复述卡"><span class="retell-inner"><span class="retell-face retell-front"><img src="${bookBase}${item.image}" alt="第 ${index+1} 幅：${escapeHtml(item.title)}"><b class="retell-number">${index+1}</b><strong class="retell-title">${escapeHtml(item.title)}</strong></span><span class="retell-face retell-back"><h3>Keywords</h3><span class="retell-keywords">${item.keywords.map(word=>`<span>${escapeHtml(word)}</span>`).join('')}</span><span class="retell-en">${escapeHtml(item.retell)}</span><span class="retell-zh">中文提示：${escapeHtml(item.cueZh)}</span></span></span></button>`).join('');$$('.retell-card').forEach(card=>card.addEventListener('click',()=>{const flipped=card.classList.toggle('is-flipped');card.setAttribute('aria-pressed',String(flipped))}));}
   function closeLayers(){if($('#quizDialog').open)$('#quizDialog').close();closeSentenceLesson();}
-  function bindEvents(){$('#prevBtn').addEventListener('click',()=>goToPage(state.page-1));$('#nextBtn').addEventListener('click',()=>goToPage(state.page+1));$('#translateBtn').addEventListener('click',()=>{const box=$('#translation');box.hidden=!box.hidden;$('#translateBtn').textContent=box.hidden?'中 显示句意':'中 隐藏句意'});$('#speakBtn').addEventListener('click',()=>{const audio=$('#paragraphAudio');audio.currentTime=0;audio.play().catch(()=>speak(book.pages[state.page].paragraph))});$('#soundToggle').addEventListener('click',()=>state.page<8&&speak(book.pages[state.page].paragraph));$('#resetBtn').addEventListener('click',()=>{if(confirm('确定重置本故事的学习进度吗？')){localStorage.removeItem(`reading-progress:${bookId}`);state={page:0,done:[]};render()}});$('#resetCards').addEventListener('click',()=>$$('.retell-card').forEach(card=>{card.classList.remove('is-flipped');card.setAttribute('aria-pressed','false')}));$('.quiz-close').addEventListener('click',()=>$('#quizDialog').close());$('#sentenceLessonClose').addEventListener('click',closeSentenceLesson);$('#modelAnswerClose').addEventListener('click',closeModelAnswer);$('[data-close-lesson]').addEventListener('click',closeSentenceLesson);$('[data-close-answer]').addEventListener('click',closeModelAnswer);document.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if(!$('#modelAnswer').hidden)closeModelAnswer();else if(!$('#sentenceLesson').hidden)closeSentenceLesson();else if($('#quizDialog').open)$('#quizDialog').close()});$$('.mobile-tab').forEach(button=>button.addEventListener('click',()=>{$$('.mobile-tab').forEach(x=>x.classList.toggle('active',x===button));$('#readingPanel').classList.toggle('active-panel',button.dataset.panel==='read');$('#scenePanel').classList.toggle('active-panel',button.dataset.panel==='explore')}));}
+  function bindEvents(){$('#prevBtn').addEventListener('click',()=>goToPage(state.page-1));$('#nextBtn').addEventListener('click',()=>goToPage(state.page+1));$('#translateBtn').addEventListener('click',()=>{const box=$('#translation');box.hidden=!box.hidden;$('#translateBtn').textContent=box.hidden?'中 显示句意':'中 隐藏句意'});$('#speakBtn').addEventListener('click',()=>{const audio=$('#paragraphAudio');audio.currentTime=0;audio.play().catch(()=>speak(book.pages[state.page].paragraph))});$('#soundToggle').addEventListener('click',()=>state.page<readingCount&&speak(book.pages[state.page].paragraph));$('#resetBtn').addEventListener('click',()=>{if(confirm('确定重置本故事的学习进度吗？')){localStorage.removeItem(`reading-progress:${bookId}`);state={page:0,done:[]};render()}});$('#resetCards').addEventListener('click',()=>$$('.retell-card').forEach(card=>{card.classList.remove('is-flipped');card.setAttribute('aria-pressed','false')}));$('.quiz-close').addEventListener('click',()=>$('#quizDialog').close());$('#sentenceLessonClose').addEventListener('click',closeSentenceLesson);$('#modelAnswerClose').addEventListener('click',closeModelAnswer);$('[data-close-lesson]').addEventListener('click',closeSentenceLesson);$('[data-close-answer]').addEventListener('click',closeModelAnswer);document.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if(!$('#modelAnswer').hidden)closeModelAnswer();else if(!$('#sentenceLesson').hidden)closeSentenceLesson();else if($('#quizDialog').open)$('#quizDialog').close()});$$('.mobile-tab').forEach(button=>button.addEventListener('click',()=>{$$('.mobile-tab').forEach(x=>x.classList.toggle('active',x===button));$('#readingPanel').classList.toggle('active-panel',button.dataset.panel==='read');$('#scenePanel').classList.toggle('active-panel',button.dataset.panel==='explore')}));}
   boot();
 })();
