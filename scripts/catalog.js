@@ -18,4 +18,17 @@ globalThis.READING_CATALOG = [{
   pages: 14,
   cover: 'books/saving-the-sun-dragon/assets/cover.png',
   href: 'reader.html?book=saving-the-sun-dragon',
+}, {
+  id: 'a-musical-boost',
+  title: 'A Musical Boost',
+  titleZh: '音乐给大脑的助力',
+  description: '探索音乐如何提升听力、专注力、语言能力，并帮助大脑恢复表达。',
+  grade: '小学高年级',
+  level: 'RE Level 1',
+  pages: 8,
+  cover: 'books/a-musical-boost/assets/cover.png',
+  textbook: 'READING EXPLORER 1 · THIRD EDITION',
+  textbookCover: 'books/a-musical-boost/assets/textbook-cover.gif',
+  theme: 'reading-explorer-1',
+  href: 'reader.html?book=a-musical-boost',
 }];

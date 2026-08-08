@@ -12,7 +12,7 @@
   function render() {
     const term = search.value.trim().toLowerCase();
     const items = catalog.filter(item => (!term || `${item.title} ${item.titleZh}`.toLowerCase().includes(term)) && (!grade.value || item.grade === grade.value) && (!level.value || item.level === level.value));
-    grid.innerHTML = items.map(item => `<article class="book-card"><img class="cover" src="${item.cover}" alt="${item.titleZh}封面"><div class="card-body"><div class="chips"><span class="chip">${item.grade}</span><span class="chip">${item.level}</span><span class="chip">${item.pages} 段＋复述</span></div><h3>${item.title}</h3><h4>${item.titleZh}</h4><p>${item.description}</p><a class="start-link" href="reader.html?book=${encodeURIComponent(item.id)}">开始精读 <span>→</span></a></div></article>`).join('');
+    grid.innerHTML = items.map(item => `<article class="book-card" data-theme="${item.theme || ''}"><div class="cover-wrap"><img class="cover" src="${item.cover}" alt="${item.titleZh}封面">${item.textbookCover ? `<img class="textbook-cover" src="${item.textbookCover}" alt="${item.textbook || item.title} textbook cover">` : ''}</div><div class="card-body"><div class="chips"><span class="chip">${item.grade}</span><span class="chip">${item.level}</span><span class="chip">${item.pages} 段＋复述</span></div>${item.textbook ? `<p class="textbook-label">${item.textbook}</p>` : ''}<h3>${item.title}</h3><h4>${item.titleZh}</h4><p>${item.description}</p><a class="start-link" href="reader.html?book=${encodeURIComponent(item.id)}">开始精读 <span>→</span></a><img class="card-brand-logo" src="assets/brand/br-logo.jpg" alt="" aria-hidden="true"></div></article>`).join('');
     empty.hidden = items.length > 0;
     count.textContent = `共 ${items.length} 篇`;
   }
