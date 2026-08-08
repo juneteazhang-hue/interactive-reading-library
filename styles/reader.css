@@ -287,6 +287,7 @@ body[data-book-theme="reading-explorer-1"] .mobile-tabs { background:#042229; }
 body[data-book-theme="reading-explorer-1"] .mobile-tab.active { color:#12221b; background:#ffd43b; }
 body[data-book-theme="reading-explorer-1"] .assessment-page { background:radial-gradient(circle at 18% 0,rgba(35,183,111,.56),transparent 38%),linear-gradient(135deg,#02171d,#07352f); }
 body[data-book-theme="reading-explorer-1"] .retelling-page { background:radial-gradient(circle at 50% 0,rgba(45,205,126,.48),transparent 43%),linear-gradient(135deg,#031820,#07332e); }
+.audio-status { margin:.55rem 0 0; color:#8a3c26; font-weight:700; }
 
 @media (max-width: 540px) {
   .topbar .textbook-label { max-width:96px; font-size:7px; line-height:1.15; white-space:normal; }

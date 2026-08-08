@@ -31,4 +31,16 @@ globalThis.READING_CATALOG = [{
   textbookCover: 'books/a-musical-boost/assets/textbook-cover.gif',
   theme: 'reading-explorer-1',
   href: 'reader.html?book=a-musical-boost',
+}, {
+  id: 'van-goghs-world',
+  title: "Van Gogh's World",
+  titleZh: '梵高的世界',
+  textbook: 'READING EXPLORER 3 · THIRD EDITION',
+  grade: '初中',
+  level: 'RE Level 3',
+  difficulty: '进阶',
+  pages: 8,
+  cover: 'books/van-goghs-world/assets/cover.png',
+  textbookCover: 'books/van-goghs-world/assets/textbook-cover.webp',
+  description: '走进梵高的色彩、挣扎、创造力与永恒艺术遗产。',
 }];
